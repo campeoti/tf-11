@@ -1,7 +1,5 @@
-# Loja do TF 11 - passo 4: embrulhando os primitivos (Cpf, Email, Cep, Dinheiro e Status).
+# Loja do TF 11 - passo 5: colecoes de primeira classe (ItensDoPedido e Pedidos).
 # Rodar no terminal: python3 loja.py
-
-pedidos = []                  # todos os pedidos da loja: lista solta, global
 
 
 # Cpf: so existe se tiver 11 caracteres, assim um cpf errado nao entra no sistema.
@@ -93,13 +91,37 @@ class ItemDoPedido:
         self.produto = produto
         self.quantidade = quantidade
 
+    def calcular_subtotal(self):
+        return self.produto.preco.multiplicar(self.quantidade)
+
+
+# ItensDoPedido: a lista de itens de um pedido, com as contas em cima dela.
+class ItensDoPedido:
+    def __init__(self):
+        self.__itens = []
+
+    def adicionar(self, item):
+        self.__itens.append(item)
+
+    def esta_vazia(self):
+        return len(self.__itens) == 0
+
+    def calcular_total(self):
+        total = Dinheiro(0)
+        for item in self.__itens:
+            total = total.somar(item.calcular_subtotal())
+        return total
+
+    def imprimir(self):
+        for item in self.__itens:
+            print("  ", item.quantidade, "x", item.produto.nome, "=", item.calcular_subtotal())
+
 
 # Pedido: a compra de um cliente, com os itens e o status.
 class Pedido:
-    def __init__(self, numero, cliente):
-        self.numero = numero
+    def __init__(self, cliente):
         self.cliente = cliente
-        self.itens = []
+        self.itens = ItensDoPedido()
         self.status = Status("A")
 
     def get_status(self):
@@ -109,25 +131,41 @@ class Pedido:
         self.status = novo_status
 
 
-def novo_pedido(numero, cliente):
-    pedido = Pedido(numero, cliente)
-    pedidos.append(pedido)
-    return pedido
+# Pedidos: todos os pedidos da loja, guardados pelo numero.
+class Pedidos:
+    def __init__(self):
+        self.__pedidos = {}
+
+    def criar(self, numero, cliente):
+        pedido = Pedido(cliente)
+        self.__pedidos[numero] = pedido
+        return pedido
+
+    def imprimir_relatorio(self):
+        for numero, pedido in self.__pedidos.items():
+            print("Pedido", numero, "-", pedido.cliente.nome, "-", pedido.cliente.cidade)
+            print("  status:", pedido.get_status().descrever())
+            pedido.itens.imprimir()
+            if not pedido.itens.esta_vazia():
+                print("  total:", pedido.itens.calcular_total(), "| desconto:", calcular_desconto(pedido.cliente.tipo, pedido.itens.calcular_total()), "| a pagar:", calcular_valor_a_pagar(pedido))
+
+    def calcular_arrecadado(self):
+        total = Dinheiro(0)
+        for pedido in self.__pedidos.values():
+            if pedido.get_status().esta_pago():
+                total = total.somar(calcular_valor_a_pagar(pedido))
+        return total
+
+    def contar_abertos(self):
+        quantidade = 0
+        for pedido in self.__pedidos.values():
+            if pedido.get_status().esta_aberto():
+                quantidade = quantidade + 1
+        return quantidade
 
 
 def adicionar_item(pedido, produto, quantidade):
-    pedido.itens.append(ItemDoPedido(produto, quantidade))
-
-
-def calcular_subtotal(item):
-    return item.produto.preco.multiplicar(item.quantidade)
-
-
-def calcular_total(pedido):
-    total = Dinheiro(0)
-    for item in pedido.itens:
-        total = total.somar(calcular_subtotal(item))
-    return total
+    pedido.itens.adicionar(ItemDoPedido(produto, quantidade))
 
 
 def calcular_desconto(tipo, total):
@@ -141,12 +179,12 @@ def calcular_desconto(tipo, total):
 
 
 def calcular_valor_a_pagar(pedido):
-    return calcular_total(pedido).subtrair(calcular_desconto(pedido.cliente.tipo, calcular_total(pedido)))
+    return pedido.itens.calcular_total().subtrair(calcular_desconto(pedido.cliente.tipo, pedido.itens.calcular_total()))
 
 
 def pagar(pedido):
     if pedido.get_status().esta_aberto():
-        if len(pedido.itens) > 0:
+        if not pedido.itens.esta_vazia():
             pedido.set_status(Status("P"))
             return True
         else:
@@ -163,73 +201,49 @@ def cancelar(pedido):
         return False
 
 
-def imprimir_relatorio():
-    for pedido in pedidos:
-        print("Pedido", pedido.numero, "-", pedido.cliente.nome, "-", pedido.cliente.cidade)
-        print("  status:", pedido.get_status().descrever())
-        for item in pedido.itens:
-            print("  ", item.quantidade, "x", item.produto.nome, "=", calcular_subtotal(item))
-        if len(pedido.itens) > 0:
-            print("  total:", calcular_total(pedido), "| desconto:", calcular_desconto(pedido.cliente.tipo, calcular_total(pedido)), "| a pagar:", calcular_valor_a_pagar(pedido))
-
-
-def calcular_arrecadado():
-    total = Dinheiro(0)
-    for pedido in pedidos:
-        if pedido.get_status().esta_pago():
-            total = total.somar(calcular_valor_a_pagar(pedido))
-    return total
-
-
-def contar_abertos():
-    quantidade = 0
-    for pedido in pedidos:
-        if pedido.get_status().esta_aberto():
-            quantidade = quantidade + 1
-    return quantidade
-
-
 # --- roteiro da loja -----------------------------------------------------------
+pedidos = Pedidos()
+
 caderno = Produto("Caderno", Dinheiro(1550))
 caneta = Produto("Caneta", Dinheiro(250))
 livro = Produto("Livro", Dinheiro(8950))
 fone = Produto("Fone", Dinheiro(6000))
 
 ana = Cliente("Ana Souza", Cpf("12345678901"), Email("ana@mail.com"), "Rua das Flores, 10", "Sorocaba", Cep("18010000"), "V")
-pedido_da_ana = novo_pedido(1, ana)
+pedido_da_ana = pedidos.criar(1, ana)
 adicionar_item(pedido_da_ana, caderno, 2)
 adicionar_item(pedido_da_ana, caneta, 5)
 
 try:
     bruno = Cliente("Bruno Lima", Cpf("123"), Email("bruno@mail.com"), "Av. Central, 200", "Votorantim", Cep("18110000"), "N")
-    novo_pedido(2, bruno)
+    pedidos.criar(2, bruno)
 except ValueError as erro:
     print("pedido 2 recusado:", erro)
 
-segundo_pedido_da_ana = novo_pedido(3, ana)
+segundo_pedido_da_ana = pedidos.criar(3, ana)
 adicionar_item(segundo_pedido_da_ana, livro, 1)
 
 try:
     carla = Cliente("Carla Dias", Cpf("98765432100"), Email("carla.mail.com"), "Rua do Sol, 55", "Sorocaba", Cep("18020000"), "F")
-    novo_pedido(4, carla)
+    pedidos.criar(4, carla)
 except ValueError as erro:
     print("pedido 4 recusado:", erro)
 
 diego = Cliente("Diego Rocha", Cpf("11122233344"), Email("diego@mail.com"), "Rua Nova, 7", "Itu", Cep("13300000"), "N")
-pedido_do_diego = novo_pedido(5, diego)
+pedido_do_diego = pedidos.criar(5, diego)
 
 eva = Cliente("Eva Nunes", Cpf("55566677788"), Email("eva@mail.com"), "Alameda Azul, 1", "Itu", Cep("13300001"), "F")
-pedido_da_eva = novo_pedido(6, eva)
+pedido_da_eva = pedidos.criar(6, eva)
 adicionar_item(pedido_da_eva, fone, 1)
 
 try:
     fabio = Cliente("Fabio Costa", Cpf("99988877766"), Email("fabio@mail.com"), "Rua Velha, 3", "Itu", Cep("123"), "N")
-    novo_pedido(7, fabio)
+    pedidos.criar(7, fabio)
 except ValueError as erro:
     print("pedido 7 recusado:", erro)
 
 gil = Cliente("Gil Alves", Cpf("44455566677"), Email("gil@mail.com"), "Rua do Meio, 9", "Sorocaba", Cep("18030000"), "N")
-pedido_do_gil = novo_pedido(8, gil)
+pedido_do_gil = pedidos.criar(8, gil)
 adicionar_item(pedido_do_gil, fone, 2)
 
 print("pagar 1:", pagar(pedido_da_ana))
@@ -239,6 +253,6 @@ print("pagar 6:", pagar(pedido_da_eva))
 print("cancelar 5:", cancelar(pedido_do_diego))
 print("cancelar 1:", cancelar(pedido_da_ana))
 
-imprimir_relatorio()
-print("arrecadado:", calcular_arrecadado())
-print("abertos:", contar_abertos())
+pedidos.imprimir_relatorio()
+print("arrecadado:", pedidos.calcular_arrecadado())
+print("abertos:", pedidos.contar_abertos())
