@@ -1,4 +1,5 @@
-# Loja do TF 11 - passo 8: sem else e um nivel de indentacao por metodo.
+# Loja do TF 11 - Object Calisthenics.
+# Versao final da loja: mesma saida da loja feia, mas com as regras aplicadas.
 # Rodar no terminal: python3 loja.py
 
 
@@ -251,13 +252,15 @@ class Pedidos:
         return len(abertos)
 
 
-# --- roteiro da loja -----------------------------------------------------------
+# --- roteiro da loja (tem que imprimir igual a saida-original.txt) -------------
 pedidos = Pedidos()
 
 caderno = Produto("Caderno", Dinheiro(1550))
 caneta = Produto("Caneta", Dinheiro(250))
 livro = Produto("Livro", Dinheiro(8950))
 fone = Produto("Fone", Dinheiro(6000))
+
+# pedidos (os numeros 2, 4 e 7 sao recusados)
 
 ana = Cliente(Pessoa("Ana Souza", Cpf("12345678901"), Email("ana@mail.com")), Endereco("Rua das Flores, 10", "Sorocaba", Cep("18010000")), TipoVip())
 pedido_da_ana = pedidos.criar(1, ana)
@@ -296,6 +299,7 @@ gil = Cliente(Pessoa("Gil Alves", Cpf("44455566677"), Email("gil@mail.com")), En
 pedido_do_gil = pedidos.criar(8, gil)
 pedido_do_gil.adicionar_item(fone, 2)
 
+# pagamentos e cancelamentos
 print("pagar 1:", pedido_da_ana.pagar())
 print("pagar 3:", segundo_pedido_da_ana.pagar())
 print("pagar 5:", pedido_do_diego.pagar())
@@ -303,6 +307,7 @@ print("pagar 6:", pedido_da_eva.pagar())
 print("cancelar 5:", pedido_do_diego.cancelar())
 print("cancelar 1:", pedido_da_ana.cancelar())
 
+# relatorio final
 pedidos.imprimir_relatorio()
 print("arrecadado:", pedidos.calcular_arrecadado())
 print("abertos:", pedidos.contar_abertos())
